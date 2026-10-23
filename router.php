@@ -6,6 +6,12 @@
  */
 
 $path = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+
+// Normalize potential client route prefixes on static assets
+if (preg_match('#^/home/(dist|assets|js|uploads)/#', $path)) {
+    $path = preg_replace('#^/home/#', '/', $path);
+}
+
 $file = __DIR__ . $path;
 
 // Serve static assets directly if they exist
