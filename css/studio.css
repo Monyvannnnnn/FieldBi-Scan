@@ -1,0 +1,186 @@
+/* FieldBi Document Scanner - Studio Theme for Bootstrap 5 */
+:root {
+  --primary-color: #ec1f28;
+  --primary-hover: #d01b23;
+  --bg-dark: #0f172a;
+  --panel-bg: #1e293b;
+  --border-color: rgba(255, 255, 255, 0.08);
+  --text-muted: #94a3b8;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Header */
+.studio-header {
+  height: 60px;
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 1.25rem;
+}
+
+.brand-badge {
+  background: #ec1f28;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+/* Connection Pill */
+.connection-pill {
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  padding: 5px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.connection-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #eab308;
+}
+
+.status-dot.connected {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+/* 3-Column Studio Layout */
+.studio-container {
+  height: calc(100vh - 60px);
+}
+
+.sidebar-left {
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+}
+
+.viewport-center {
+  background: #090d16;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-right {
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border-color);
+  overflow-y: auto;
+}
+
+/* Buttons */
+.btn-fieldbi {
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+  font-weight: 600;
+}
+
+.btn-fieldbi:hover {
+  background-color: var(--primary-hover);
+  color: #fff;
+}
+
+/* Document Canvas Workspace */
+.canvas-wrapper {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  flex: 1;
+  padding: 20px;
+}
+
+#docCanvas {
+  max-width: 100%;
+  max-height: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+}
+
+/* Loupe Magnifier for Cropping */
+#cropOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.crop-handle {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ec1f28;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  pointer-events: auto;
+}
+
+/* Page Thumbnails */
+.thumb-card {
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.thumb-card.active {
+  border-color: var(--primary-color);
+  background: rgba(236, 31, 40, 0.08);
+}
+
+.thumb-card img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Filter Buttons */
+.filter-btn-group .btn {
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-color: var(--border-color);
+  color: #94a3b8;
+}
+
+.filter-btn-group .btn.active {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: var(--primary-color);
+}

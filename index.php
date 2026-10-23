@@ -1,0 +1,141 @@
+<?php
+/**
+ * index.php - FieldBi Document Scanner Web Studio
+ * Backend: PHP 5.5.38 Compatible
+ * Serves the full FieldBi CamScanner Studio with direct integration to api/ backend endpoints.
+ */
+
+// Initialize uploads directory if not present
+$uploadDir = dirname(__FILE__) . '/uploads';
+if (!file_exists($uploadDir)) {
+    mkdir($uploadDir, 0777, true);
+}
+?>
+<!doctype html>
+<html lang="en" data-beasties-container>
+  <head>
+    <meta charset="utf-8">
+    <title>FieldBi - Document Scanner</title>
+
+    <!-- Google Fonts: Khmer + Latin typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <style>@font-face{font-family:'Kantumruy Pro';font-style:italic;font-weight:100 700;font-display:swap;src:url(https://fonts.gstatic.com/s/kantumruypro/v12/1q2eY5aECkp34vEBSPFOmJxwlEbxcqWku2U.woff2) format('woff2');unicode-range:U+1780-17FF, U+19E0-19FF, U+200C-200D, U+25CC;}@font-face{font-family:'Kantumruy Pro';font-style:italic;font-weight:100 700;font-display:swap;src:url(https://fonts.gstatic.com/s/kantumruypro/v12/1q2eY5aECkp34vEBSPFOmJxwlEbxd6Wku2U.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Kantumruy Pro';font-style:italic;font-weight:100 700;font-display:swap;src:url(https://fonts.gstatic.com/s/kantumruypro/v12/1q2eY5aECkp34vEBSPFOmJxwlEbxeaWk.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Kantumruy Pro';font-style:normal;font-weight:100 700;font-display:swap;src:url(https://fonts.gstatic.com/s/kantumruypro/v12/1q2AY5aECkp34vEBSPFOmJxwlEjBe72g.woff2) format('woff2');unicode-range:U+1780-17FF, U+19E0-19FF, U+200C-200D, U+25CC;}@font-face{font-family:'Kantumruy Pro';font-style:normal;font-weight:100 700;font-display:swap;src:url(https://fonts.gstatic.com/s/kantumruypro/v12/1q2AY5aECkp34vEBSPFOmJxwlE3Be72g.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Kantumruy Pro';font-style:normal;font-weight:100 700;font-display:swap;src:url(https://fonts.gstatic.com/s/kantumruypro/v12/1q2AY5aECkp34vEBSPFOmJxwlEPBew.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Noto Sans Khmer';font-style:normal;font-weight:400;font-stretch:100%;font-display:swap;src:url(https://fonts.gstatic.com/s/notosanskhmer/v29/ijwCs5roRME5LLRxjsRb-gssOenAyendxrgV2c-Zw-9vR1IFeh7j.woff2) format('woff2');unicode-range:U+1780-17FF, U+19E0-19FF, U+200C-200D, U+25CC;}@font-face{font-family:'Noto Sans Khmer';font-style:normal;font-weight:400;font-stretch:100%;font-display:swap;src:url(https://fonts.gstatic.com/s/notosanskhmer/v29/ijwCs5roRME5LLRxjsRb-gssOenAyendxrgV2c-Zw-9vR1cFeh7j.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Noto Sans Khmer';font-style:normal;font-weight:400;font-stretch:100%;font-display:swap;src:url(https://fonts.gstatic.com/s/notosanskhmer/v29/ijwCs5roRME5LLRxjsRb-gssOenAyendxrgV2c-Zw-9vR1kFeg.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Noto Sans Khmer';font-style:normal;font-weight:600;font-stretch:100%;font-display:swap;src:url(https://fonts.gstatic.com/s/notosanskhmer/v29/ijwCs5roRME5LLRxjsRb-gssOenAyendxrgV2c-Zw-9vR1IFeh7j.woff2) format('woff2');unicode-range:U+1780-17FF, U+19E0-19FF, U+200C-200D, U+25CC;}@font-face{font-family:'Noto Sans Khmer';font-style:normal;font-weight:600;font-stretch:100%;font-display:swap;src:url(https://fonts.gstatic.com/s/notosanskhmer/v29/ijwCs5roRME5LLRxjsRb-gssOenAyendxrgV2c-Zw-9vR1cFeh7j.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Noto Sans Khmer';font-style:normal;font-weight:600;font-stretch:100%;font-display:swap;src:url(https://fonts.gstatic.com/s/notosanskhmer/v29/ijwCs5roRME5LLRxjsRb-gssOenAyendxrgV2c-Zw-9vR1kFeg.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}@font-face{font-family:'Noto Sans Khmer';font-style:normal;font-weight:700;font-stretch:100%;font-display:swap;src:url(https://fonts.gstatic.com/s/notosanskhmer/v29/ijwCs5roRME5LLRxjsRb-gssOenAyendxrgV2c-Zw-9vR1IFeh7j.woff2) format('woff2');unicode-range:U+1780-17FF, U+19E0-19FF, U+200C-200D, U+25CC;}@font-face{font-family:'Noto Sans Khmer';font-style:normal;font-weight:700;font-stretch:100%;font-display:swap;src:url(https://fonts.gstatic.com/s/notosanskhmer/v29/ijwCs5roRME5LLRxjsRb-gssOenAyendxrgV2c-Zw-9vR1cFeh7j.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;}@font-face{font-family:'Noto Sans Khmer';font-style:normal;font-weight:700;font-stretch:100%;font-display:swap;src:url(https://fonts.gstatic.com/s/notosanskhmer/v29/ijwCs5roRME5LLRxjsRb-gssOenAyendxrgV2c-Zw-9vR1kFeg.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}</style>
+
+    <base href="./">
+
+    <meta name="color-scheme" content="light dark">
+    <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
+
+    <link rel="icon" type="image/svg+xml" href="assets/icon/favicon.svg?v=5">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icon/favicon.png?v=5">
+    <link rel="shortcut icon" type="image/png" href="assets/icon/favicon.png?v=5">
+    <link rel="apple-touch-icon" href="assets/icon/favicon.png?v=5">
+
+    <!-- add to homescreen for ios -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <style>:root{--ion-color-primary:#0054e9;--ion-color-primary-rgb:0, 84, 233;--ion-color-primary-contrast:#fff;--ion-color-primary-contrast-rgb:255, 255, 255;--ion-color-primary-shade:#004acd;--ion-color-primary-tint:#1a65eb;--ion-color-secondary:#0163aa;--ion-color-secondary-rgb:1, 99, 170;--ion-color-secondary-contrast:#fff;--ion-color-secondary-contrast-rgb:255, 255, 255;--ion-color-secondary-shade:#015796;--ion-color-secondary-tint:#1a73b3;--ion-color-tertiary:#6030ff;--ion-color-tertiary-rgb:96, 48, 255;--ion-color-tertiary-contrast:#fff;--ion-color-tertiary-contrast-rgb:255, 255, 255;--ion-color-tertiary-shade:#542ae0;--ion-color-tertiary-tint:#7045ff;--ion-color-success:#2dd55b;--ion-color-success-rgb:45, 213, 91;--ion-color-success-contrast:#000;--ion-color-success-contrast-rgb:0, 0, 0;--ion-color-success-shade:#28bb50;--ion-color-success-tint:#42d96b;--ion-color-warning:#ffc409;--ion-color-warning-rgb:255, 196, 9;--ion-color-warning-contrast:#000;--ion-color-warning-contrast-rgb:0, 0, 0;--ion-color-warning-shade:#e0ac08;--ion-color-warning-tint:#ffca22;--ion-color-danger:#c5000f;--ion-color-danger-rgb:197, 0, 15;--ion-color-danger-contrast:#fff;--ion-color-danger-contrast-rgb:255, 255, 255;--ion-color-danger-shade:#ad000d;--ion-color-danger-tint:#cb1a27;--ion-color-light:#f4f5f8;--ion-color-light-rgb:244, 245, 248;--ion-color-light-contrast:#000;--ion-color-light-contrast-rgb:0, 0, 0;--ion-color-light-shade:#d7d8da;--ion-color-light-tint:#f5f6f9;--ion-color-medium:#636469;--ion-color-medium-rgb:99, 100, 105;--ion-color-medium-contrast:#fff;--ion-color-medium-contrast-rgb:255, 255, 255;--ion-color-medium-shade:#57585c;--ion-color-medium-tint:#737478;--ion-color-dark:#222428;--ion-color-dark-rgb:34, 36, 40;--ion-color-dark-contrast:#fff;--ion-color-dark-contrast-rgb:255, 255, 255;--ion-color-dark-shade:#1e2023;--ion-color-dark-tint:#383a3e}html{--ion-dynamic-font:-apple-system-body;--ion-font-family:var(--ion-default-font)}body{background:var(--ion-background-color);color:var(--ion-text-color)}@supports (padding-top: 20px){html{--ion-safe-area-top:var(--ion-statusbar-padding)}}@supports (padding-top: env(safe-area-inset-top)){html{--ion-safe-area-top:var(--safe-area-inset-top, env(safe-area-inset-top));--ion-safe-area-bottom:var(--safe-area-inset-bottom, env(safe-area-inset-bottom));--ion-safe-area-left:var(--safe-area-inset-left, env(safe-area-inset-left));--ion-safe-area-right:var(--safe-area-inset-right, env(safe-area-inset-right))}}*{box-sizing:border-box;-webkit-tap-highlight-color:rgba(0,0,0,0);-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}html{width:100%;height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}body{-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;margin:0;padding:0;position:fixed;width:100%;max-width:100%;height:100%;max-height:100%;transform:translateZ(0);text-rendering:optimizeLegibility;overflow:hidden;touch-action:manipulation;-webkit-user-drag:none;-ms-content-zooming:none;word-wrap:break-word;overscroll-behavior-y:none;-webkit-text-size-adjust:none;text-size-adjust:none}html{font-family:var(--ion-font-family)}@supports (-webkit-touch-callout: none){html{font:var(--ion-dynamic-font, 16px var(--ion-font-family))}}html,body{width:100%;height:100%;height:100dvh;height:-webkit-fill-available;overflow:hidden;position:fixed;overscroll-behavior-y:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-font-smoothing:antialiased}:root{--ion-color-primary:#ec1f28;--ion-color-primary-rgb:236, 31, 40;--ion-color-primary-contrast:#ffffff;--ion-color-primary-contrast-rgb:255, 255, 255;--ion-color-primary-shade:#d01b23;--ion-color-primary-tint:#ee353d}</style><style>
+/* Fix thumbnail badge collision & layout */
+.mobile-pages-strip {
+  gap: 12px !important;
+  padding: 6px 10px !important;
+  align-items: center !important;
+}
+.mobile-pages-strip .mobile-strip-thumb {
+  position: relative !important;
+  margin: 0 !important;
+}
+/* Inactive thumbnails: hide the red X button so cards are clean and never collide */
+.mobile-pages-strip .mobile-strip-thumb .strip-thumb-delete {
+  display: none !important;
+}
+/* Active thumbnail: display red X on top-left cleanly with elevation */
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete {
+  display: block !important;
+  position: absolute !important;
+  top: -6px !important;
+  left: -6px !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: #ef4444 !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45) !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  color: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  z-index: 5 !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+}
+/* Mathematically pixel-perfect centered cross */
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete::before,
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 9px !important;
+  height: 2px !important;
+  background-color: #ffffff !important;
+  border-radius: 1px !important;
+  pointer-events: none !important;
+}
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete::before {
+  transform: translate(-50%, -50%) rotate(45deg) !important;
+}
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete::after {
+  transform: translate(-50%, -50%) rotate(-45deg) !important;
+}
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete:active {
+  transform: scale(0.9) !important;
+}
+/* Active thumbnail checkmark: place diagonally on bottom-right inside the card corner */
+.mobile-pages-strip .mobile-strip-thumb .strip-thumb-check {
+  position: absolute !important;
+  top: auto !important;
+  left: auto !important;
+  bottom: 3px !important;
+  right: 3px !important;
+  width: 17px !important;
+  height: 17px !important;
+  border-radius: 50% !important;
+  background: #16a34a !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: 0 2px 5px rgba(22, 163, 74, 0.4) !important;
+  z-index: 4 !important;
+}
+.mobile-pages-strip .mobile-strip-thumb.active {
+  border: 2px solid #ec1f28 !important;
+  box-shadow: 0 0 0 2px rgba(236, 31, 40, 0.25), 0 3px 8px rgba(0, 0, 0, 0.12) !important;
+}
+</style>
+<link rel="stylesheet" href="dist/styles-USYXGXB7.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="dist/styles-USYXGXB7.css"></noscript></head>
+
+  <body>
+    <script>
+      window.PHP_BACKEND = {
+        version: "5.5.38",
+        apiBase: "./api/",
+        endpoints: {
+          upload: "./api/upload.php",
+          invoices: "./api/invoices.php",
+          recent: "./api/recent.php"
+        }
+      };
+    </script>
+    <app-root></app-root>
+  <link rel="modulepreload" href="dist/chunk-C86zhvaO.js"><link rel="modulepreload" href="dist/chunk-D9AI81tR.js"><link rel="modulepreload" href="dist/chunk-CfZDj8X5.js"><link rel="modulepreload" href="dist/chunk-BDsr83Wc.js"><link rel="modulepreload" href="dist/chunk-CABSGZFi.js"><script src="dist/main-WK3YL7MT.js" type="module"></script></body>
+</html>

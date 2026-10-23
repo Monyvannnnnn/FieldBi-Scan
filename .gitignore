@@ -1,0 +1,12 @@
+# User uploads
+uploads/*
+!uploads/.gitkeep
+
+# Temporary database journals
+api/*.db-journal
+api/*.db-wal
+
+# Logs & OS artifacts
+*.log
+.DS_Store
+Thumbs.db

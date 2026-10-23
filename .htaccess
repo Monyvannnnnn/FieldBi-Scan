@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Pass existing files and directories directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Allow direct access to api folder
+  RewriteRule ^api/ - [L]
+
+  # Route all other Ionic / Angular client-side routes to index.php
+  RewriteRule ^ index.php [L,QSA]
+</IfModule>
