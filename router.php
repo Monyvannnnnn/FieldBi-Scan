@@ -1,4 +1,5 @@
 <?php
+
 /**
  * router.php - Router script for PHP Built-in Web Server
  * Usage: php -S localhost:8000 router.php

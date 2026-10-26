@@ -1,4 +1,5 @@
 <?php
+
 /**
  * invoices.php - AP Invoice API Endpoint (PHP 5.5.38 compatible)
  */

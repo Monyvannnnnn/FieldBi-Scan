@@ -1,4 +1,5 @@
 <?php
+
 /**
  * db.php - Database Connector (Strict PHP 5.5.38 Compatibility)
  * Uses PDO with SQLite (zero configuration) and MySQL fallback.
@@ -7,13 +8,15 @@
 // Prevent direct error leakage in production
 error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
 
-class Database {
+class Database
+{
     private static $instance = null;
     private $pdo;
 
-    private function __construct() {
+    private function __construct()
+    {
         $dbPath = dirname(__FILE__) . '/scanner.db';
-        
+
         try {
             // Use SQLite by default for zero-setup instant local running
             $this->pdo = new PDO('sqlite:' . $dbPath);
@@ -32,18 +35,21 @@ class Database {
         }
     }
 
-    public static function getInstance() {
+    public static function getInstance()
+    {
         if (self::$instance === null) {
             self::$instance = new self();
         }
         return self::$instance;
     }
 
-    public function getConnection() {
+    public function getConnection()
+    {
         return $this->pdo;
     }
 
-    private function initTables() {
+    private function initTables()
+    {
         // Invoices table
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS invoices (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

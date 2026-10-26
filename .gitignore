@@ -10,3 +10,4 @@ api/*.db-wal
 *.log
 .DS_Store
 Thumbs.db
+.env

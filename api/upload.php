@@ -1,4 +1,5 @@
 <?php
+
 /**
  * upload.php - Receives and saves scanned images & documents (PHP 5.5.38 compatible)
  */

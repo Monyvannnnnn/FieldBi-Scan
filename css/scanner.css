@@ -1,0 +1,378 @@
+/* FieldBi Document Scanner - Custom Overrides */
+
+/* Fix thumbnail badge collision & layout */
+.mobile-pages-strip {
+  gap: 12px !important;
+  padding: 6px 10px !important;
+  align-items: center !important;
+}
+
+.mobile-pages-strip .mobile-strip-thumb {
+  position: relative !important;
+  margin: 0 !important;
+}
+
+/* Inactive thumbnails: hide the red X button so cards are clean and never collide */
+.mobile-pages-strip .mobile-strip-thumb .strip-thumb-delete {
+  display: none !important;
+}
+
+/* Active thumbnail: display red X on top-left cleanly with elevation */
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete {
+  display: block !important;
+  position: absolute !important;
+  top: -6px !important;
+  left: -6px !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 50% !important;
+  background: #ef4444 !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45) !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  color: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  z-index: 5 !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Mathematically pixel-perfect centered cross */
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete::before,
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 9px !important;
+  height: 2px !important;
+  background-color: #ffffff !important;
+  border-radius: 1px !important;
+  pointer-events: none !important;
+}
+
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete::before {
+  transform: translate(-50%, -50%) rotate(45deg) !important;
+}
+
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete::after {
+  transform: translate(-50%, -50%) rotate(-45deg) !important;
+}
+
+.mobile-pages-strip .mobile-strip-thumb.active .strip-thumb-delete:active {
+  transform: scale(0.9) !important;
+}
+
+/* Active thumbnail checkmark: place diagonally on bottom-right inside the card corner */
+.mobile-pages-strip .mobile-strip-thumb .strip-thumb-check {
+  position: absolute !important;
+  top: auto !important;
+  left: auto !important;
+  bottom: 3px !important;
+  right: 3px !important;
+  width: 17px !important;
+  height: 17px !important;
+  border-radius: 50% !important;
+  background: #16a34a !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: 0 2px 5px rgba(22, 163, 74, 0.4) !important;
+  z-index: 4 !important;
+}
+
+.mobile-pages-strip .mobile-strip-thumb.active {
+  border: 2px solid #ec1f28 !important;
+  box-shadow: 0 0 0 2px rgba(236, 31, 40, 0.25), 0 3px 8px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Hide all invoice data, tabs, forms, and extra fields while extraction is in progress */
+.sidebar-body:has(.invoice-extracting-state) > *:not(.invoice-extracting-state),
+.cs-panel-invoice-sidebar:has(.invoice-extracting-state) .invoice-tab-content,
+.cs-panel-invoice-sidebar:has(.invoice-extracting-state) .fieldbi-standard-form-wrapper,
+.cs-panel-invoice-sidebar:has(.invoice-extracting-state) #fieldbi-standard-invoice-extras,
+.invoice-extracting-state ~ .invoice-tab-content,
+.invoice-extracting-state ~ .fieldbi-standard-form-wrapper,
+.invoice-extracting-state ~ #fieldbi-standard-invoice-extras,
+.invoice-extracting-state ~ * {
+  display: none !important;
+}
+
+/* Remove the white background paper-sheet frame covering/surrounding the whole document image */
+.cs-panel-stage .paper-sheet,
+.stage-canvas-area .paper-sheet,
+.document-container .paper-sheet,
+.paper-sheet {
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  aspect-ratio: auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  justify-content: center !important;
+}
+
+.cs-panel-stage .paper-sheet .paper-img-frame,
+.paper-sheet .paper-img-frame,
+.paper-img-frame {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  -webkit-border-radius: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.cs-panel-stage .paper-sheet .paper-img-frame .paper-image,
+.paper-sheet .paper-image,
+.paper-image,
+.crop-image-target,
+.crop-overlay-wrapper {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  -webkit-border-radius: 0 !important;
+}
+
+.cs-panel-stage .paper-sheet .paper-doc-caption,
+.paper-sheet .paper-doc-caption,
+.paper-doc-caption {
+  display: none !important;
+}
+
+/* ========================================================
+ * AnalyzingImage - AI Vision Scan Loading Style (loading-ui)
+ * ======================================================== */
+.invoice-extracting-state,
+.cs-panel-invoice-sidebar .sidebar-body .invoice-extracting-state {
+  padding: 16px 12px !important;
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  margin: 6px 0 !important;
+  color: #0f172a !important;
+  position: relative !important;
+  overflow: visible !important;
+}
+
+.invoice-extracting-state::before {
+  display: none !important;
+}
+
+.invoice-extracting-state .extracting-spinner-wrap {
+  position: relative !important;
+  width: auto !important;
+  height: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-bottom: 12px !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* Hide the old spinner */
+.invoice-extracting-state .extracting-halo,
+.invoice-extracting-state .extracting-spinner,
+.invoice-extracting-state .extracting-ai-icon {
+  display: none !important;
+}
+
+/* AnalyzingImage Component - Compact 38px */
+.analyzing-image-component {
+  position: relative !important;
+  width: 38px !important;
+  height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #0f172a !important;
+  flex-shrink: 0 !important;
+}
+
+.analyzing-image-inner {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Scanned Digital Matrix (Base Layer) */
+.analyzing-matrix-svg {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  color: #cbd5e1 !important;
+}
+
+/* Photo Layer with clip-path sweep */
+.analyzing-clip-layer {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 2 !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  animation: analyzingClipAnim 2.4s cubic-bezier(0.175, 0.885, 0.32, 1) infinite alternate !important;
+}
+
+.analyzing-photo-svg {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+/* Sweeping Laser Beam */
+.analyzing-laser-beam {
+  position: absolute !important;
+  top: -2px !important;
+  bottom: -2px !important;
+  width: 2px !important;
+  border-radius: 4px !important;
+  background: #ec1f28 !important;
+  box-shadow: 0 0 6px #ec1f28, 0 0 10px rgba(236, 31, 40, 0.45) !important;
+  z-index: 3 !important;
+  animation: analyzingLaserAnim 2.4s cubic-bezier(0.175, 0.885, 0.32, 1) infinite alternate !important;
+}
+
+@keyframes analyzingClipAnim {
+  0% {
+    clip-path: inset(0% 0% 0% 0%);
+  }
+  15% {
+    clip-path: inset(0% 0% 0% 0%);
+  }
+  85% {
+    clip-path: inset(0% 102% 0% 0%);
+  }
+  100% {
+    clip-path: inset(0% 102% 0% 0%);
+  }
+}
+
+@keyframes analyzingLaserAnim {
+  0% {
+    left: 100%;
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    left: 0%;
+    opacity: 1;
+  }
+  100% {
+    left: 0%;
+    opacity: 0;
+  }
+}
+
+.invoice-extracting-state .extracting-title {
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  margin: 0 0 4px 0 !important;
+  letter-spacing: -0.2px !important;
+}
+
+.invoice-extracting-state .extracting-desc {
+  font-size: 11.5px !important;
+  color: #64748b !important;
+  margin: 0 0 12px 0 !important;
+  line-height: 1.4 !important;
+  max-width: 260px !important;
+}
+
+.invoice-extracting-state .extracting-progress-track {
+  width: 100% !important;
+  max-width: 200px !important;
+  height: 5px !important;
+  background: #e2e8f0 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  margin-bottom: 5px !important;
+}
+
+.invoice-extracting-state .extracting-progress-bar {
+  height: 100% !important;
+  background: #ec1f28 !important;
+  border-radius: 4px !important;
+  transition: width 0.35s ease !important;
+}
+
+.invoice-extracting-state .ocr-progress-percent {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+}
+
+.invoice-extracting-state .extracting-steps-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  margin-top: 12px !important;
+  margin-bottom: 14px !important;
+}
+
+.invoice-extracting-state .step-pill {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
+  background: #f1f5f9 !important;
+  padding: 3px 8px !important;
+  border-radius: 12px !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.invoice-extracting-state .step-pill.active {
+  color: #ffffff !important;
+  background: #ec1f28 !important;
+  border-color: #ec1f28 !important;
+}
+
+.invoice-extracting-state .step-arrow {
+  font-size: 9.5px !important;
+  color: #94a3b8 !important;
+}
+
+.invoice-extracting-state .btn-cancel-extract,
+.invoice-extracting-state button {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  padding: 6px 14px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.invoice-extracting-state .btn-cancel-extract:hover,
+.invoice-extracting-state button:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}

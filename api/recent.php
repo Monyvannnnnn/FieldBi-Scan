@@ -1,4 +1,5 @@
 <?php
+
 /**
  * recent.php - Session & Recent Documents API (PHP 5.5.38 compatible)
  */

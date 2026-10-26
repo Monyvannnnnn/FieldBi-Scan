@@ -1,14 +1,26 @@
+Options +FollowSymLinks -MultiViews
+DirectoryIndex index.php index.html
+
 <IfModule mod_rewrite.c>
-  RewriteEngine On
+    RewriteEngine On
 
-  # Pass existing files and directories directly
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
-  RewriteRule ^ - [L]
+    # Allow existing files and folders (like css, js, dist, uploads, assets) to load normally
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
 
-  # Allow direct access to api folder
-  RewriteRule ^api/ - [L]
+    # Allow direct access to api folder
+    RewriteRule ^api/ - [L]
 
-  # Route all other Ionic / Angular client-side routes to index.php
-  RewriteRule ^ index.php [L,QSA]
+    # Route everything else (like /home) to index.php
+    RewriteRule ^ index.php [L,QSA]
 </IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(js|css|json)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+</IfModule>
+
