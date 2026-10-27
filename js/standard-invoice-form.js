@@ -266,6 +266,7 @@
       enhanceDocumentVendorSection();
       renderConditionalFormFields(force);
       enhanceInvoiceTotalsGrid();
+      enhanceRawOcrTab(force);
     } finally {
       setTimeout(function() {
         isRendering = false;
@@ -650,6 +651,7 @@
       const t = mutations[i].target;
       if (!t) continue;
       if (t.id === 'fieldbi-standard-invoice-extras' || (t.closest && t.closest('#fieldbi-standard-invoice-extras'))) continue;
+      if (t.id === 'fieldbi-enhanced-raw-ocr' || (t.closest && t.closest('#fieldbi-enhanced-raw-ocr'))) continue;
       if (t.classList && (t.classList.contains('doc-vendor-header') || t.classList.contains('doc-add-field-menu') || t.classList.contains('btn-remove-doc-field') || t.classList.contains('totals-reconciliation-container') || t.classList.contains('tax-rate-contradiction-alert') || t.classList.contains('ai-provenance-badge-btn') || t.classList.contains('subtotal-missing-hint-box'))) continue;
       if (t.closest && (t.closest('.doc-vendor-header') || t.closest('.doc-add-field-menu') || t.closest('.totals-reconciliation-container') || t.closest('.tax-rate-contradiction-alert') || t.closest('#ai-provenance-audit-modal'))) continue;
       if (t.closest && (t.closest('.doc-vendor-header') || t.closest('.doc-add-field-menu'))) continue;
@@ -912,6 +914,399 @@
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
+
+  // ==========================================================
+  // Enhanced Raw OCR Inspector & Formatter
+  // ==========================================================
+  let ocrViewMode = 'formatted'; // 'formatted' | 'lines' | 'raw'
+  let ocrSearchQuery = '';
+
+  function getRawOcrText() {
+    if (window.homePageComponent && window.homePageComponent.ocrExtractedText) {
+      return window.homePageComponent.ocrExtractedText;
+    }
+    const origTextarea = document.querySelector('.invoice-tab-content.tab-raw .ocr-textarea');
+    if (origTextarea && origTextarea.value) {
+      return origTextarea.value;
+    }
+    const data = getData();
+    if (data && data.rawOcrText) {
+      return data.rawOcrText;
+    }
+    return '';
+  }
+
+  function formatInvoiceOcrText(data, rawText) {
+    let lines = [];
+    lines.push('================================================================================');
+    lines.push('                   FIELDBI AP VISION - STRUCTURED OCR DATA');
+    lines.push('================================================================================\n');
+
+    if (data && (data.vendorName || data.invoiceNumber || (data.items && data.items.length) || data.grandTotal)) {
+      lines.push('[ 1. DOCUMENT & SUPPLIER INFORMATION ]');
+      const vName = data.vendorName || (data.vendor && data.vendor.name);
+      if (vName) lines.push('  Vendor Name      : ' + vName);
+      const vPhone = data.vendorPhone || (data.vendor && data.vendor.phone);
+      if (vPhone) lines.push('  Vendor Phone     : ' + vPhone);
+      const vTax = data.vendorTaxId || (data.vendor && data.vendor.taxId);
+      if (vTax) lines.push('  Tax ID / VAT     : ' + vTax);
+      const vEmail = data.vendorEmail || (data.vendor && data.vendor.email);
+      if (vEmail) lines.push('  Vendor Email     : ' + vEmail);
+      let addr = (data.vendor && data.vendor.address) || [data.vendor?.street, data.vendor?.city, data.vendor?.country].filter(Boolean).join(', ') || data.vendorAddress;
+      if (addr) lines.push('  Vendor Address   : ' + addr);
+      lines.push('');
+
+      lines.push('[ 2. INVOICE META & PAYMENT TERMS ]');
+      if (data.invoiceNumber) lines.push('  Invoice / Doc No : ' + data.invoiceNumber);
+      if (data.invoiceDate) lines.push('  Invoice Date     : ' + data.invoiceDate);
+      if (data.dueDate) lines.push('  Payment Due Date : ' + data.dueDate);
+      if (data.paymentTerms) lines.push('  Payment Terms    : ' + data.paymentTerms);
+      if (data.currency) lines.push('  Currency         : ' + data.currency);
+      lines.push('');
+
+      const bName = data.billedTo || data.billTo?.name || data.customer?.name;
+      const bAddr = data.billingAddress || data.billTo?.address || data.billTo?.street || data.customer?.billingAddress;
+      if (bName || bAddr) {
+        lines.push('[ 3. CUSTOMER / BILLED TO ]');
+        if (bName) lines.push('  Billed To        : ' + bName);
+        if (bAddr) lines.push('  Billing Address  : ' + bAddr);
+        lines.push('');
+      }
+
+      if (data.items && data.items.length) {
+        lines.push('[ 4. ITEM DETAILS & LINE CHARGES ]');
+        lines.push('  #  | SKU / Item Code | Description                        | Qty | Unit Price | Total Amount');
+        lines.push('  ---+-----------------+------------------------------------+-----+------------+--------------');
+        data.items.forEach((it, idx) => {
+          let no = String(idx + 1).padEnd(2);
+          let sku = String(it.sku || it.itemCode || '-').padEnd(15);
+          let desc = String(it.description || 'Item').padEnd(34);
+          let qty = String(it.quantity || 1).padStart(3);
+          let price = Number(it.unitPrice || 0).toFixed(2).padStart(10);
+          let total = Number(it.total || 0).toFixed(2).padStart(12);
+          lines.push('  ' + no + ' | ' + sku + ' | ' + desc + ' | ' + qty + ' | ' + price + ' | ' + total);
+        });
+        lines.push('');
+      }
+
+      lines.push('[ 5. FINANCIAL TOTALS ]');
+      if (data.subtotal != null && Number(data.subtotal) > 0) lines.push('  Net Subtotal     : ' + Number(data.subtotal).toFixed(2));
+      if (data.discounts != null && Number(data.discounts) > 0) lines.push('  Discounts        : -' + Number(data.discounts).toFixed(2));
+      if (data.shippingFees != null && Number(data.shippingFees) > 0) lines.push('  Shipping / Fees  : ' + Number(data.shippingFees).toFixed(2));
+      if (data.taxRate != null && Number(data.taxRate) > 0) lines.push('  Tax Rate         : ' + data.taxRate + '%');
+      if (data.taxAmount != null && Number(data.taxAmount) > 0) lines.push('  Tax Amount       : ' + Number(data.taxAmount).toFixed(2));
+      if (data.grandTotal != null) lines.push('  Grand Total      : ' + Number(data.grandTotal).toFixed(2));
+      lines.push('');
+
+      if (data.notes || data.remarks) {
+        lines.push('[ 6. NOTES & REMARKS ]');
+        lines.push('  ' + (data.notes || data.remarks));
+        lines.push('');
+      }
+    }
+
+    if (rawText && rawText.trim()) {
+      lines.push('================================================================================');
+      lines.push('                   RAW VERBATIM OCR TRANSCRIPTION');
+      lines.push('================================================================================\n');
+      lines.push(rawText.trim());
+    } else if (!data || (!data.vendorName && !data.invoiceNumber)) {
+      lines.push('(No readable text detected on this document yet. Click "+ Scan" to extract.)');
+    }
+
+    return lines.join('\n');
+  }
+
+  function highlightSearchMatches(escapedText, query) {
+    if (!query || !query.trim()) return { html: escapedText, count: 0 };
+    const q = query.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp('(' + q + ')', 'gi');
+    let matches = 0;
+    const html = escapedText.replace(regex, function(m) {
+      matches++;
+      return '<mark class="ocr-search-match">' + m + '</mark>';
+    });
+    return { html: html, count: matches };
+  }
+
+  function syntaxColorFormattedText(text, query) {
+    let esc = escapeHtml(text);
+    const searchRes = highlightSearchMatches(esc, query);
+    let html = searchRes.html;
+
+    html = html.replace(/(\[ \d+\. [^\]]+ \])/g, '<span class="enhanced-ocr-section-header">$1</span>');
+    html = html.replace(/(=+)/g, '<span class="enhanced-ocr-table-border">$1</span>');
+    html = html.replace(/(\s{2}[A-Za-z /#]+)(\s*:\s*)([^\n<]+)/g, function(_, k, colon, val) {
+      let isAmt = /[$€£¥]?\d+[.,]\d{2}/.test(val);
+      return '<span class="enhanced-ocr-key">' + k + colon + '</span>' + (isAmt ? '<span class="enhanced-ocr-amount">' + val + '</span>' : '<span class="enhanced-ocr-val">' + val + '</span>');
+    });
+
+    return { html: html, count: searchRes.count };
+  }
+
+  function enhanceRawOcrTab(force) {
+    const tabRaw = document.querySelector('.invoice-tab-content.tab-raw');
+    if (!tabRaw) return;
+
+    tabRaw.classList.add('has-enhanced-ocr');
+
+    let container = document.getElementById('fieldbi-enhanced-raw-ocr');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'fieldbi-enhanced-raw-ocr';
+      container.className = 'enhanced-raw-ocr-container';
+      tabRaw.appendChild(container);
+    }
+
+    const rawText = getRawOcrText();
+    const data = getData();
+    const formattedText = formatInvoiceOcrText(data, rawText);
+    const activeText = ocrViewMode === 'formatted' ? formattedText : rawText;
+
+    // Word, char, line counts
+    const lines = activeText.split('\n');
+    const lineCount = activeText.trim() ? lines.length : 0;
+    const words = activeText.trim() ? activeText.trim().split(/\s+/).length : 0;
+    const chars = activeText.length;
+    const docName = (window.homePageComponent && window.homePageComponent.activeDocFileName) || 'Document.pdf';
+
+    let bodyHtml = '';
+    let matchCount = 0;
+
+    if (ocrViewMode === 'formatted') {
+      const res = syntaxColorFormattedText(formattedText, ocrSearchQuery);
+      matchCount = res.count;
+      bodyHtml = `
+        <pre class="enhanced-ocr-formatted-view"><code>${res.html}</code></pre>
+      `;
+    } else if (ocrViewMode === 'lines') {
+      const linesList = (rawText.trim() ? rawText : formattedText).split('\n');
+      let linesHtml = '';
+      linesList.forEach((line, idx) => {
+        const lineEsc = escapeHtml(line);
+        const searchRes = highlightSearchMatches(lineEsc, ocrSearchQuery);
+        matchCount += searchRes.count;
+        linesHtml += `
+          <div class="enhanced-ocr-line-row">
+            <span class="enhanced-ocr-line-num">${String(idx + 1).padStart(2, '0')}</span>
+            <span class="enhanced-ocr-line-content">${searchRes.html || '&nbsp;'}</span>
+          </div>
+        `;
+      });
+      bodyHtml = `
+        <div class="enhanced-ocr-lines-view">
+          ${linesHtml}
+        </div>
+      `;
+    } else { // 'raw'
+      bodyHtml = `
+        <div class="enhanced-ocr-textarea-view">
+          <textarea class="enhanced-ocr-editor" id="enhancedOcrTextareaInput" placeholder="Edit or transcribe raw OCR text...">${escapeHtml(rawText)}</textarea>
+        </div>
+      `;
+    }
+
+    container.innerHTML = `
+      <div class="enhanced-ocr-toolbar">
+        <div class="enhanced-ocr-toolbar-left">
+          <span class="enhanced-ocr-badge">📄 ${escapeHtml(docName)}</span>
+          <span class="enhanced-ocr-badge status-verified">✓ Verbatim OCR</span>
+          <span class="enhanced-ocr-badge stat-pill">${lineCount} lines</span>
+          <span class="enhanced-ocr-badge stat-pill">${words} words</span>
+          <span class="enhanced-ocr-badge stat-pill">${chars} chars</span>
+        </div>
+
+        <div class="enhanced-ocr-view-switch">
+          <button type="button" class="enhanced-ocr-view-btn ${ocrViewMode === 'formatted' ? 'active' : ''}" data-view="formatted" title="Structured format with section headers and aligned line items">
+            📋 Formatted
+          </button>
+          <button type="button" class="enhanced-ocr-view-btn ${ocrViewMode === 'lines' ? 'active' : ''}" data-view="lines" title="Line-by-line view with numbered gutter">
+            🔢 Lines
+          </button>
+          <button type="button" class="enhanced-ocr-view-btn ${ocrViewMode === 'raw' ? 'active' : ''}" data-view="raw" title="Editable raw textarea">
+            ✏️ Raw Editor
+          </button>
+        </div>
+
+        <div class="enhanced-ocr-search-wrap">
+          <input type="text" class="enhanced-ocr-search-input" id="enhancedOcrSearchInput" placeholder="🔍 Search OCR text..." value="${escapeHtml(ocrSearchQuery)}">
+          ${ocrSearchQuery.trim() ? `<span class="enhanced-ocr-search-count">${matchCount}</span>` : ''}
+        </div>
+
+        <div class="enhanced-ocr-actions-right">
+          <button type="button" class="btn-ocr-tool" id="btnOcrFormatClean" title="Clean extra spaces and format line wraps">
+            ✨ Clean & Align
+          </button>
+          <button type="button" class="btn-ocr-tool" id="btnOcrCopyAll" title="Copy text to clipboard">
+            📋 Copy
+          </button>
+          <button type="button" class="btn-ocr-tool" id="btnOcrExportTxt" title="Export as UTF-8 .TXT file">
+            💾 Export .TXT
+          </button>
+          <button type="button" class="btn-ocr-tool btn-primary-action" id="btnOcrUpdateForm" title="Re-parse text and update standard form">
+            ⚡ Update Form
+          </button>
+        </div>
+      </div>
+
+      <div class="enhanced-ocr-body">
+        ${bodyHtml}
+      </div>
+
+      <div class="enhanced-ocr-footer">
+        <div class="enhanced-ocr-tip">
+          💡 <span><b>Pro-Tip:</b> You can edit text in the <b>Raw Editor</b> mode and click <b>"Update Form"</b> to immediately sync all fields.</span>
+        </div>
+        <div class="enhanced-ocr-status">
+          <span>Mode: <b>${ocrViewMode.toUpperCase()}</b></span>
+        </div>
+      </div>
+    `;
+
+    // Bind View Switcher buttons
+    container.querySelectorAll('.enhanced-ocr-view-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        ocrViewMode = this.getAttribute('data-view') || 'formatted';
+        enhanceRawOcrTab(true);
+      });
+    });
+
+    // Bind Search Input
+    const searchInput = container.querySelector('#enhancedOcrSearchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', function(e) {
+        ocrSearchQuery = this.value;
+        enhanceRawOcrTab(true);
+        setTimeout(() => {
+          const inp = document.getElementById('enhancedOcrSearchInput');
+          if (inp) {
+            inp.focus();
+            inp.selectionStart = inp.selectionEnd = inp.value.length;
+          }
+        }, 10);
+      });
+    }
+
+    // Bind Textarea Input (if raw mode)
+    const editor = container.querySelector('#enhancedOcrTextareaInput');
+    if (editor) {
+      editor.addEventListener('input', function(e) {
+        const val = this.value;
+        const origTextarea = tabRaw.querySelector('.ocr-textarea');
+        if (origTextarea) {
+          origTextarea.value = val;
+          origTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if (window.homePageComponent) {
+          window.homePageComponent.ocrExtractedText = val;
+        }
+      });
+    }
+
+    // Bind Copy Button
+    const copyBtn = container.querySelector('#btnOcrCopyAll');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const textToCopy = ocrViewMode === 'formatted' ? formattedText : rawText;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          copyBtn.classList.add('copied');
+          copyBtn.innerHTML = '✓ Copied!';
+          setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            copyBtn.innerHTML = '📋 Copy';
+          }, 2000);
+        }).catch(() => {
+          const ta = document.createElement('textarea');
+          ta.value = textToCopy;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          copyBtn.classList.add('copied');
+          copyBtn.innerHTML = '✓ Copied!';
+          setTimeout(() => {
+            copyBtn.classList.remove('copied');
+            copyBtn.innerHTML = '📋 Copy';
+          }, 2000);
+        });
+      });
+    }
+
+    // Bind Export .TXT Button
+    const exportBtn = container.querySelector('#btnOcrExportTxt');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (window.homePageComponent && typeof window.homePageComponent.exportOcrTxt === 'function') {
+          window.homePageComponent.exportOcrTxt();
+        } else {
+          const textToExport = ocrViewMode === 'formatted' ? formattedText : rawText;
+          const blob = new Blob(['\uFEFF' + textToExport], { type: 'text/plain;charset=utf-8' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = docName.replace(/\.pdf$/i, '') + '_OCR_Text.txt';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+      });
+    }
+
+    // Bind Clean & Align Button
+    const cleanBtn = container.querySelector('#btnOcrFormatClean');
+    if (cleanBtn) {
+      cleanBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        let cleaned = (rawText || formattedText)
+          .normalize('NFC')
+          .split('\n')
+          .map(l => l.replace(/[\t ]+/g, ' ').trimRight())
+          .join('\n')
+          .replace(/\n{3,}/g, '\n\n');
+
+        if (window.homePageComponent) {
+          window.homePageComponent.ocrExtractedText = cleaned;
+        }
+        const origTextarea = tabRaw.querySelector('.ocr-textarea');
+        if (origTextarea) {
+          origTextarea.value = cleaned;
+          origTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        cleanBtn.innerHTML = '✓ Cleaned!';
+        setTimeout(() => {
+          cleanBtn.innerHTML = '✨ Clean & Align';
+        }, 1800);
+        enhanceRawOcrTab(true);
+      });
+    }
+
+    // Bind Update Form Button
+    const updateBtn = container.querySelector('#btnOcrUpdateForm');
+    if (updateBtn) {
+      updateBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (window.homePageComponent && typeof window.homePageComponent.reParseOcrTextToJson === 'function') {
+          window.homePageComponent.reParseOcrTextToJson();
+        }
+        updateBtn.innerHTML = '✓ Form Updated!';
+        setTimeout(() => {
+          updateBtn.innerHTML = '⚡ Update Form';
+        }, 2000);
+      });
+    }
+  }
+
+  // Also bind tab click listener to switch to Raw OCR seamlessly
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('button');
+    if (btn && btn.textContent && /raw\s*ocr/i.test(btn.textContent)) {
+      setTimeout(function() {
+        enhanceRawOcrTab(true);
+      }, 60);
+    }
+  });
 
   // Dynamically ensure all file inputs accept both images and PDF files
   function updateFileInputAccepts() {
