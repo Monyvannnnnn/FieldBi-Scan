@@ -936,11 +936,438 @@
     return '';
   }
 
+  function standardizeDateString(dStr) {
+    if (!dStr) return '';
+    dStr = String(dStr).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dStr)) return dStr;
+
+    const monthNames = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+    const namedMatch = dStr.match(/([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})/i) || dStr.match(/(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})/i);
+    if (namedMatch) {
+      const isMonthFirst = isNaN(parseInt(namedMatch[1], 10));
+      const mStr = (isMonthFirst ? namedMatch[1] : namedMatch[2]).toLowerCase().slice(0, 3);
+      const m = monthNames[mStr];
+      const d = parseInt(isMonthFirst ? namedMatch[2] : namedMatch[1], 10);
+      const y = parseInt(namedMatch[3], 10);
+      if (m && d && y) {
+        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      }
+    }
+
+    const parts = dStr.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
+    if (parts) {
+      let p1 = parseInt(parts[1], 10), p2 = parseInt(parts[2], 10), yr = parseInt(parts[3], 10);
+      if (yr < 100) yr += 2000;
+      let m = p1, d = p2;
+      if (p1 > 12 && p2 <= 12) { d = p1; m = p2; }
+      return `${yr}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+
+    const testD = new Date(dStr);
+    if (!isNaN(testD.getTime())) {
+      const y = testD.getFullYear();
+      const m = String(testD.getMonth() + 1).padStart(2, '0');
+      const day = String(testD.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    return dStr;
+  }
+
+  function convertKhmerNumerals(t) {
+    if (!t) return '';
+    const khmerDigits = ['០','១','២','៣','៤','៥','៦','៧','៨','៩'];
+    return t.replace(/[០-៩]/g, i => {
+      const idx = khmerDigits.indexOf(i);
+      return idx !== -1 ? String(idx) : i;
+    });
+  }
+
+  function parseFullApInvoiceUniversal(rawText) {
+    if (!rawText || !rawText.trim()) return null;
+
+    let normalized = rawText.normalize('NFC').replace(/\u200B/g, '');
+    normalized = convertKhmerNumerals(normalized);
+    const lines = normalized.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+    // 1. Invoice Number
+    let invoiceNumber = '';
+    const invMatch = normalized.match(/(?:invoice\s*(?:no|number|#)|inv\s*(?:no|#|[:#])|bill\s*#|receipt\s*#)\s*[:#.]?\s*([A-Za-z0-9-_]+)/i)
+      || normalized.match(/#(\d{4,10})/);
+    if (invMatch) invoiceNumber = invMatch[1];
+
+    // 2. Dates
+    let invoiceDate = '';
+    let dueDate = '';
+    const dateMatch = normalized.match(/(?:invoice\s*date|date\s*issued|issue\s*date|dated|date)\s*[:.]?\s*([0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{4}|[A-Za-z]{3,9}\s+[0-9]{1,2},?\s+[0-9]{4}|\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4})/i);
+    if (dateMatch) invoiceDate = standardizeDateString(dateMatch[1]);
+
+    const dueMatch = normalized.match(/(?:due\s*date|payment\s*due)\s*[:.]?\s*([0-9]{1,2}\s+[A-Za-z]{3,9}\s+[0-9]{4}|[A-Za-z]{3,9}\s+[0-9]{1,2},?\s+[0-9]{4}|\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4})/i);
+    if (dueMatch) dueDate = standardizeDateString(dueMatch[1]);
+    if (!dueDate && invoiceDate) dueDate = invoiceDate;
+
+    // 3. PO / Reference Number
+    let poNumber = '';
+    const poMatch = normalized.match(/(?:booking\s*reference|p\.?o\.?\s*(?:no|#)?|po\s*number|purchase\s*order|order\s*#|ref\s*#)\s*[:.#-]?\s*([A-Za-z0-9-_]+)/i);
+    if (poMatch) poNumber = poMatch[1].trim();
+
+    // 4. Payment Terms
+    let paymentTerms = '';
+    for (let i = 0; i < lines.length; i++) {
+      if (/^payment\s*terms\b/i.test(lines[i])) {
+        const inline = lines[i].replace(/^payment\s*terms\s*[:.-]?\s*/i, '').trim();
+        if (inline) {
+          paymentTerms = inline;
+        } else if (lines[i + 1] && !/^(notes|address|total|tax|created)/i.test(lines[i + 1])) {
+          paymentTerms = lines[i + 1];
+        }
+        break;
+      }
+    }
+    if (!paymentTerms) {
+      const ptMatch = normalized.match(/(?:terms|payment\s*terms)\s*[:.]?\s*([^\n\r]+)/i);
+      if (ptMatch) paymentTerms = ptMatch[1].trim();
+    }
+
+    // 5. Vendor Details
+    let vendorName = '';
+    for (let i = 0; i < Math.min(6, lines.length); i++) {
+      const l = lines[i];
+      if (!/^(invoice|bill\s*to|ship\s*to|prepared\s*for|date|phone|tel|email|due|tax|total|booking|description|qty)/i.test(l) &&
+          l.replace(/[^A-Za-z0-9\u1780-\u17FF]/g, '').length >= 3) {
+        vendorName = l.replace(/^[_\s\-.:|#~*+=]+/, '').replace(/[_\s\-.:|#~*+=]+$/, '').trim();
+        break;
+      }
+    }
+    if (!vendorName) vendorName = 'Unknown Vendor';
+
+    let vendorAddress = '';
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      if (/^address\b/i.test(l)) {
+        if (lines[i + 1] && !/^(created|date|invoice|total|tax|payment)/i.test(lines[i + 1])) {
+          vendorAddress = lines[i + 1];
+          break;
+        }
+      } else if (/\b[A-Za-z\s]+,\s*[A-Z]{2}(?:\s+\d{5})?\b/.test(l) && !vendorAddress) {
+        vendorAddress = l;
+      }
+    }
+
+    // Vendor Phone & Email
+    let vendorPhone = '';
+    const phoneMatch = normalized.match(/(?:phone|tel|mobile)\s*[:.]?\s*([+\d()\s-]{7,20})|\b(\(\d{3}\)\s*\d{3}-\d{4})\b/i);
+    if (phoneMatch) vendorPhone = (phoneMatch[1] || phoneMatch[2]).trim();
+
+    let vendorEmail = '';
+    const emailMatch = normalized.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+    if (emailMatch) vendorEmail = emailMatch[1].trim();
+
+    // 6. Customer / Billed To
+    let customerName = '';
+    const custMatch = normalized.match(/(?:prepared\s*for|bill\s*to|billed\s*to|customer|client)\s*[:.]?\s*([^\n\r]+)/i);
+    if (custMatch) {
+      customerName = custMatch[1].replace(/^(?:to|for)\s*[:.]?\s*/i, '').trim();
+    }
+
+    const custCodeMatch = normalized.match(/(?:customer\s*code|cust\s*code|customer\s*id|client\s*id)\s*[:.]?\s*([A-Za-z0-9-_]+)/i);
+    const customerTaxId = custCodeMatch ? custCodeMatch[1].trim() : '';
+
+    // 7. Notes
+    let notes = '';
+    for (let i = 0; i < lines.length; i++) {
+      if (/^notes?\b/i.test(lines[i])) {
+        const inline = lines[i].replace(/^notes?\s*[:.-]?\s*/i, '').trim();
+        if (inline) {
+          notes = inline;
+        } else if (lines[i + 1] && !/^(address|created|terms|total|tax)/i.test(lines[i + 1])) {
+          notes = lines[i + 1];
+        }
+        break;
+      }
+    }
+
+    // 8. Line Items Extraction
+    const items = [];
+    const stopKeywords = /^(tax|sub\s*total|subtotal|net|total|payment\s*terms|notes?|address|created\s*with|thank\s*you)/i;
+
+    // Pattern A: Multi-line vertical items (4-line: Name \n Qty \n UnitPrice \n Total)
+    for (let j = 0; j < lines.length - 2; j++) {
+      const l1 = lines[j];
+      const l2 = lines[j + 1];
+      const l3 = lines[j + 2];
+      const l4 = lines[j + 3];
+
+      if (l4 && !stopKeywords.test(l1)) {
+        const qV = parseFloat(l2.replace(/[^\d.]/g, ''));
+        const pV = parseFloat(l3.replace(/[^\d.]/g, ''));
+        const tV = parseFloat(l4.replace(/[^\d.]/g, ''));
+
+        if (!isNaN(qV) && !isNaN(pV) && !isNaN(tV) && qV > 0 && pV > 0 && tV > 0) {
+          if (Math.abs(qV * pV - tV) < 0.5 || Math.abs(tV - qV * pV) / tV < 0.05) {
+            if (!/^(description|item|qty|unit\s*price|price|total)/i.test(l1)) {
+              items.push({
+                itemNo: items.length + 1,
+                sku: '-',
+                description: l1.trim(),
+                quantity: qV,
+                unitPrice: pV,
+                total: tV
+              });
+              j += 3;
+              continue;
+            }
+          }
+        }
+      }
+
+      // Pattern B: 3-line vertical items (Name \n Qty \n Total)
+      if (l3 && !stopKeywords.test(l1)) {
+        const qV = parseFloat(l2.replace(/[^\d.]/g, ''));
+        const tV = parseFloat(l3.replace(/[^\d.]/g, ''));
+        if (!isNaN(qV) && !isNaN(tV) && qV > 0 && tV > 0 && !/[A-Za-z]/.test(l2)) {
+          if (!/^(description|item|qty|price|total)/i.test(l1)) {
+            const pV = Math.round((tV / qV) * 100) / 100;
+            items.push({
+              itemNo: items.length + 1,
+              sku: '-',
+              description: l1.trim(),
+              quantity: qV,
+              unitPrice: pV,
+              total: tV
+            });
+            j += 2;
+            continue;
+          }
+        }
+      }
+    }
+
+    // Pattern C: Horizontal single-line items
+    if (items.length === 0) {
+      const lineItemRegexes = [
+        /^(?:(\d{3,8}|[A-Z0-9-]{3,10})\s+)?(.+?)\s+([\d,.]+)\s+[$៛]?([\d,.]+)\s+[$៛]?([\d,.]+)$/,
+        /^(.+?)\s+([\d,.]+)\s+[$៛]?([\d,.]+)\s+[$៛]?([\d,.]+)$/,
+        /^(.+?)\s+(\d+)\s+[$៛]?([\d,.]+)$/
+      ];
+
+      for (const line of lines) {
+        if (/^(#|item|description|sku|sub\s*total|net|total|tax|vat|terms|payment|due|date)/i.test(line)) continue;
+
+        for (const rx of lineItemRegexes) {
+          const m = line.match(rx);
+          if (m) {
+            if (m.length === 6) {
+              const sku = m[1] || '-';
+              const desc = m[2].trim();
+              const qty = parseFloat(m[3].replace(/,/g, ''));
+              const price = parseFloat(m[4].replace(/,/g, ''));
+              const total = parseFloat(m[5].replace(/,/g, ''));
+              items.push({ itemNo: items.length + 1, sku, description: desc, quantity: qty, unitPrice: price, total });
+              break;
+            } else if (m.length === 5) {
+              const desc = m[1].trim();
+              const qty = parseFloat(m[2].replace(/,/g, ''));
+              const price = parseFloat(m[3].replace(/,/g, ''));
+              const total = parseFloat(m[4].replace(/,/g, ''));
+              items.push({ itemNo: items.length + 1, sku: '-', description: desc, quantity: qty, unitPrice: price, total });
+              break;
+            } else if (m.length === 4) {
+              const desc = m[1].trim();
+              const qty = parseFloat(m[2].replace(/,/g, ''));
+              const total = parseFloat(m[3].replace(/,/g, ''));
+              items.push({ itemNo: items.length + 1, sku: '-', description: desc, quantity: qty, unitPrice: Math.round((total / qty) * 100) / 100, total });
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // 9. Financial Totals
+    let subtotal = 0;
+    let taxAmount = 0;
+    let taxRate = 0;
+    let grandTotal = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (/^tax\b/i.test(lines[i])) {
+        const inline = lines[i].replace(/^tax\s*[:.-]?\s*[$]?\s*/i, '').trim();
+        const rateM = inline.match(/(\d+(?:\.\d+)?)\s*%/);
+        if (rateM) taxRate = parseFloat(rateM[1]);
+        const valM = inline.replace(/\(\d+%\)/, '').replace(/[$,]/g, '').trim();
+        if (valM && !isNaN(parseFloat(valM))) {
+          taxAmount = parseFloat(valM);
+        } else if (lines[i + 1]) {
+          const nextVal = lines[i + 1].replace(/[$,]/g, '').trim();
+          if (!isNaN(parseFloat(nextVal))) taxAmount = parseFloat(nextVal);
+        }
+        break;
+      }
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      if (/^(sub\s*total|net)\b/i.test(lines[i])) {
+        const inline = lines[i].replace(/^(sub\s*total|net)\s*[:.-]?\s*[$]?\s*/i, '').trim();
+        if (inline && !isNaN(parseFloat(inline.replace(/,/g, '')))) {
+          subtotal = parseFloat(inline.replace(/,/g, ''));
+        } else if (lines[i + 1]) {
+          const nextVal = lines[i + 1].replace(/[$,]/g, '').trim();
+          if (!isNaN(parseFloat(nextVal))) subtotal = parseFloat(nextVal);
+        }
+        break;
+      }
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      if (/^total\b/i.test(lines[i]) && !/^total\s*(items|tax|qty|discount)/i.test(lines[i])) {
+        const inline = lines[i].replace(/^total\s*[:.-]?\s*[$]?\s*/i, '').trim();
+        if (inline && !isNaN(parseFloat(inline.replace(/,/g, '')))) {
+          grandTotal = parseFloat(inline.replace(/,/g, ''));
+        } else if (lines[i + 1]) {
+          const nextVal = lines[i + 1].replace(/[$,]/g, '').trim();
+          if (!isNaN(parseFloat(nextVal))) grandTotal = parseFloat(nextVal);
+        }
+        break;
+      }
+    }
+
+    const itemsSum = items.length > 0
+      ? Math.round(items.reduce((s, it) => s + (it.total || 0), 0) * 100) / 100
+      : 0;
+
+    if (subtotal === 0 && itemsSum > 0) {
+      subtotal = itemsSum;
+    }
+
+    if (taxAmount > 0 && subtotal > 0 && taxRate === 0) {
+      taxRate = Math.round((taxAmount / subtotal) * 100);
+    }
+
+    if (grandTotal === 0 && subtotal > 0) {
+      grandTotal = Math.round((subtotal + taxAmount) * 100) / 100;
+    } else if (grandTotal === subtotal && taxAmount > 0) {
+      grandTotal = Math.round((subtotal + taxAmount) * 100) / 100;
+    }
+
+    return {
+      documentType: 'AP_INVOICE',
+      currency: 'USD',
+      vendor: {
+        name: vendorName,
+        address: vendorAddress,
+        phone: vendorPhone,
+        email: vendorEmail,
+        taxId: ''
+      },
+      vendorName: vendorName,
+      vendorAddress: vendorAddress,
+      vendorPhone: vendorPhone,
+      vendorEmail: vendorEmail,
+      invoiceNumber: invoiceNumber,
+      invoiceDate: invoiceDate,
+      dueDate: dueDate,
+      paymentTerms: paymentTerms || 'Within 30 days',
+      poNumber: poNumber,
+      bookingReference: poNumber,
+      customerTaxId: customerTaxId,
+      customerCode: customerTaxId,
+      billTo: {
+        name: customerName,
+        address: vendorAddress
+      },
+      billedTo: customerName,
+      billingAddress: vendorAddress,
+      billedAddress: vendorAddress,
+      items: items,
+      subtotal: subtotal,
+      taxRate: taxRate,
+      taxAmount: taxAmount,
+      grandTotal: grandTotal,
+      notes: notes,
+      rawOcrText: rawText
+    };
+  }
+
+  function cleanAndAlignOcrText(rawText) {
+    if (!rawText || !rawText.trim()) return '';
+    const parsed = parseFullApInvoiceUniversal(rawText);
+    if (!parsed) return rawText.trim();
+
+    let out = [];
+
+    if (parsed.vendorName && parsed.vendorName !== 'Unknown Vendor') {
+      out.push(parsed.vendorName.toUpperCase());
+    }
+    if (parsed.vendorAddress) {
+      out.push(parsed.vendorAddress);
+    }
+    if (parsed.vendorPhone) {
+      out.push('Tel: ' + parsed.vendorPhone);
+    }
+    if (parsed.vendorEmail) {
+      out.push('Email: ' + parsed.vendorEmail);
+    }
+    out.push('');
+
+    if (parsed.invoiceNumber) out.push(`Invoice No. : ${parsed.invoiceNumber}`);
+    if (parsed.invoiceDate)   out.push(`Date        : ${parsed.invoiceDate}`);
+    if (parsed.dueDate)       out.push(`Due Date    : ${parsed.dueDate}`);
+    if (parsed.poNumber)      out.push(`Booking Ref : ${parsed.poNumber}`);
+    if (parsed.customerCode)  out.push(`Customer ID : ${parsed.customerCode}`);
+    if (parsed.billedTo)      out.push(`Prepared For: ${parsed.billedTo}`);
+    out.push('');
+
+    if (parsed.items && parsed.items.length > 0) {
+      out.push('DESCRIPTION                             QTY   UNIT PRICE        TOTAL');
+      out.push('---------------------------------------------------------------------');
+      for (const it of parsed.items) {
+        const desc = (it.description || '').padEnd(38).slice(0, 38);
+        const qty = String(it.quantity || 1).padStart(5);
+        const price = ('$' + Number(it.unitPrice || 0).toFixed(2)).padStart(12);
+        const total = ('$' + Number(it.total || 0).toFixed(2)).padStart(13);
+        out.push(`${desc} ${qty} ${price} ${total}`);
+      }
+      out.push('---------------------------------------------------------------------');
+      out.push('');
+    }
+
+    if (parsed.subtotal) {
+      out.push(`SUBTOTAL:        $${Number(parsed.subtotal).toFixed(2)}`);
+    }
+    if (parsed.taxAmount) {
+      const rateStr = parsed.taxRate ? ` (${parsed.taxRate}%)` : '';
+      out.push(`TAX${rateStr}:       $${Number(parsed.taxAmount).toFixed(2)}`);
+    }
+    if (parsed.grandTotal) {
+      out.push(`TOTAL:           $${Number(parsed.grandTotal).toFixed(2)}`);
+    }
+    out.push('');
+
+    if (parsed.paymentTerms) {
+      out.push(`PAYMENT TERMS : ${parsed.paymentTerms}`);
+    }
+    if (parsed.notes) {
+      out.push(`NOTES         : ${parsed.notes}`);
+    }
+
+    return out.join('\n').trim();
+  }
+
+  window.parseFullApInvoiceUniversal = parseFullApInvoiceUniversal;
+  window.cleanAndAlignOcrText = cleanAndAlignOcrText;
+
   function formatInvoiceOcrText(data, rawText) {
     let lines = [];
     lines.push('================================================================================');
     lines.push('                   FIELDBI AP VISION - STRUCTURED OCR DATA');
     lines.push('================================================================================\n');
+
+    if ((!data || !data.items || data.items.length === 0) && rawText && rawText.trim()) {
+      const fallback = parseFullApInvoiceUniversal(rawText);
+      if (fallback && fallback.items && fallback.items.length > 0) {
+        data = Object.assign({}, data, fallback);
+      }
+    }
 
     if (data && (data.vendorName || data.invoiceNumber || (data.items && data.items.length) || data.grandTotal)) {
       lines.push('[ 1. DOCUMENT & SUPPLIER INFORMATION ]');
@@ -948,7 +1375,7 @@
       if (vName) lines.push('  Vendor Name      : ' + vName);
       const vPhone = data.vendorPhone || (data.vendor && data.vendor.phone);
       if (vPhone) lines.push('  Vendor Phone     : ' + vPhone);
-      const vTax = data.vendorTaxId || (data.vendor && data.vendor.taxId);
+      const vTax = data.vendorTaxId || (data.vendor && data.vendor.taxId) || data.customerTaxId;
       if (vTax) lines.push('  Tax ID / VAT     : ' + vTax);
       const vEmail = data.vendorEmail || (data.vendor && data.vendor.email);
       if (vEmail) lines.push('  Vendor Email     : ' + vEmail);
@@ -958,6 +1385,7 @@
 
       lines.push('[ 2. INVOICE META & PAYMENT TERMS ]');
       if (data.invoiceNumber) lines.push('  Invoice / Doc No : ' + data.invoiceNumber);
+      if (data.poNumber || data.bookingReference) lines.push('  PO / Booking Ref : ' + (data.poNumber || data.bookingReference));
       if (data.invoiceDate) lines.push('  Invoice Date     : ' + data.invoiceDate);
       if (data.dueDate) lines.push('  Payment Due Date : ' + data.dueDate);
       if (data.paymentTerms) lines.push('  Payment Terms    : ' + data.paymentTerms);
@@ -965,10 +1393,12 @@
       lines.push('');
 
       const bName = data.billedTo || data.billTo?.name || data.customer?.name;
-      const bAddr = data.billingAddress || data.billTo?.address || data.billTo?.street || data.customer?.billingAddress;
-      if (bName || bAddr) {
+      const bAddr = data.billingAddress || data.billedAddress || data.billTo?.address || data.billTo?.street || data.customer?.billingAddress;
+      const cCode = data.customerCode || data.customerTaxId;
+      if (bName || bAddr || cCode) {
         lines.push('[ 3. CUSTOMER / BILLED TO ]');
         if (bName) lines.push('  Billed To        : ' + bName);
+        if (cCode) lines.push('  Customer Code    : ' + cCode);
         if (bAddr) lines.push('  Billing Address  : ' + bAddr);
         lines.push('');
       }
@@ -1259,12 +1689,8 @@
     if (cleanBtn) {
       cleanBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        let cleaned = (rawText || formattedText)
-          .normalize('NFC')
-          .split('\n')
-          .map(l => l.replace(/[\t ]+/g, ' ').trimRight())
-          .join('\n')
-          .replace(/\n{3,}/g, '\n\n');
+        const curText = getRawOcrText() || rawText || formattedText;
+        const cleaned = cleanAndAlignOcrText(curText);
 
         if (window.homePageComponent) {
           window.homePageComponent.ocrExtractedText = cleaned;
@@ -1274,7 +1700,7 @@
           origTextarea.value = cleaned;
           origTextarea.dispatchEvent(new Event('input', { bubbles: true }));
         }
-        cleanBtn.innerHTML = '✓ Cleaned!';
+        cleanBtn.innerHTML = '✓ Cleaned & Aligned!';
         setTimeout(() => {
           cleanBtn.innerHTML = '✨ Clean & Align';
         }, 1800);
@@ -1287,7 +1713,34 @@
     if (updateBtn) {
       updateBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        if (window.homePageComponent && typeof window.homePageComponent.reParseOcrTextToJson === 'function') {
+        const curText = getRawOcrText() || rawText;
+        const parsed = parseFullApInvoiceUniversal(curText);
+        if (parsed) {
+          window.currentInvoiceData = parsed;
+          currentData = parsed;
+          if (window.homePageComponent) {
+            if (window.homePageComponent.ngZone) {
+              window.homePageComponent.ngZone.run(() => {
+                window.homePageComponent.extractedInvoiceJson = parsed;
+                window.homePageComponent.extractedApInvoice = parsed;
+                window.homePageComponent.currentApInvoice = parsed;
+                if (window.homePageComponent.pages && window.homePageComponent.pages[window.homePageComponent.activePageIndex]) {
+                  window.homePageComponent.pages[window.homePageComponent.activePageIndex].extractedInvoice = parsed;
+                }
+                if (window.homePageComponent.cdr) {
+                  window.homePageComponent.cdr.detectChanges();
+                }
+              });
+            } else {
+              window.homePageComponent.extractedInvoiceJson = parsed;
+              window.homePageComponent.extractedApInvoice = parsed;
+              window.homePageComponent.currentApInvoice = parsed;
+            }
+          }
+          window.dispatchEvent(new CustomEvent('fieldbiInvoiceExtracted', { detail: parsed }));
+          syncParsedDataToInputs(parsed);
+          renderAllEnhancedSections(true);
+        } else if (window.homePageComponent && typeof window.homePageComponent.reParseOcrTextToJson === 'function') {
           window.homePageComponent.reParseOcrTextToJson();
         }
         updateBtn.innerHTML = '✓ Form Updated!';
@@ -1297,6 +1750,100 @@
       });
     }
   }
+
+  function syncParsedDataToInputs(data) {
+    if (!data) return;
+    const formContainer = document.querySelector('.invoice-tab-content.tab-form, .cs-panel-invoice-sidebar .sidebar-body');
+    if (!formContainer) return;
+
+    const fieldMap = {
+      'vendor name': data.vendorName || (data.vendor && data.vendor.name),
+      'vendor phone': data.vendorPhone || (data.vendor && data.vendor.phone),
+      'tax': data.vendorTaxId || (data.vendor && data.vendor.taxId) || data.customerTaxId,
+      'vendor address': data.vendorAddress || (data.vendor && data.vendor.address),
+      'invoice / doc no': data.invoiceNumber,
+      'po number': data.poNumber || data.bookingReference,
+      'invoice date': data.invoiceDate,
+      'due date': data.dueDate,
+      'payment terms': data.paymentTerms,
+      'currency': data.currency,
+      'billed to': data.billedTo || (data.billTo && data.billTo.name),
+      'billing / delivery address': data.billingAddress || data.billedAddress || (data.billTo && data.billTo.address),
+      'notes / remarks': data.notes
+    };
+
+    const formGroups = formContainer.querySelectorAll('.form-group');
+    formGroups.forEach(fg => {
+      const label = fg.querySelector('label');
+      const input = fg.querySelector('input, select, textarea');
+      if (!label || !input) return;
+      const lText = label.textContent.toLowerCase().trim();
+      for (const [keyPattern, val] of Object.entries(fieldMap)) {
+        if (lText.includes(keyPattern) && val != null && String(val).trim() !== '') {
+          if (input.value !== String(val).trim()) {
+            input.value = String(val).trim();
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          break;
+        }
+      }
+    });
+
+    const totalsGrid = formContainer.querySelector('.invoice-totals-grid');
+    if (totalsGrid) {
+      const rows = totalsGrid.querySelectorAll('.total-row');
+      rows.forEach(r => {
+        const label = r.querySelector('.total-label');
+        const input = r.querySelector('input');
+        if (!label || !input) return;
+        const lt = label.textContent.toLowerCase();
+        if (lt.includes('subtotal') || lt.includes('net')) {
+          if (data.subtotal) {
+            input.value = Number(data.subtotal).toFixed(2);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        } else if (lt.includes('tax') || lt.includes('vat')) {
+          if (data.taxAmount) {
+            input.value = Number(data.taxAmount).toFixed(2);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        } else if (lt.includes('grand total') || lt.includes('total due') || (lt.includes('total') && !lt.includes('sub'))) {
+          if (data.grandTotal) {
+            input.value = Number(data.grandTotal).toFixed(2);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+      });
+    }
+  }
+
+  function hookAngularHomePage() {
+    if (!window.homePageComponent) return;
+    if (window.homePageComponent._isUniversalHooked) return;
+    window.homePageComponent._isUniversalHooked = true;
+
+    const origParse = window.homePageComponent.parseFullApInvoice;
+    window.homePageComponent.parseFullApInvoice = function(text) {
+      const res = parseFullApInvoiceUniversal(text);
+      if (res && res.items && res.items.length > 0) {
+        return res;
+      }
+      if (origParse) {
+        try {
+          const origRes = origParse.call(this, text);
+          if (origRes && origRes.items && origRes.items.length > 0) return origRes;
+        } catch(e) {}
+      }
+      return res || (origParse ? origParse.call(this, text) : null);
+    };
+
+    window.homePageComponent.parseApInvoiceText = window.homePageComponent.parseFullApInvoice;
+    window.homePageComponent.parseRawTextToApInvoiceJson = window.homePageComponent.parseFullApInvoice;
+  }
+
+  setInterval(hookAngularHomePage, 800);
+  hookAngularHomePage();
 
   // Also bind tab click listener to switch to Raw OCR seamlessly
   document.addEventListener('click', function(e) {

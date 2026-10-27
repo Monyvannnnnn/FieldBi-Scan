@@ -33,6 +33,11 @@ class OCRInvoiceEngine {
    * Client-side pattern parsing from raw OCR text into structured AP Invoice JSON
    */
   parseInvoiceText(text) {
+    if (typeof window !== 'undefined' && typeof window.parseFullApInvoiceUniversal === 'function') {
+      const res = window.parseFullApInvoiceUniversal(text);
+      if (res) return res;
+    }
+
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
     let invoiceNumber = '';
