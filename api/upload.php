@@ -39,8 +39,8 @@ if (isset($_FILES['file']) && $_FILES['file']['error'] === UPLOAD_ERR_OK) {
 
 if ($data && isset($data['dataUrl'])) {
     $dataUrl = $data['dataUrl'];
-    if (preg_match('/^data:image\/(\w+);base64,/', $dataUrl, $matches)) {
-        $ext = strtolower($matches[1]);
+    if (preg_match('/^data:(?:image\/(\w+)|application\/(pdf));base64,/', $dataUrl, $matches)) {
+        $ext = !empty($matches[2]) ? 'pdf' : strtolower($matches[1]);
         $base64Data = substr($dataUrl, strpos($dataUrl, ',') + 1);
         $decoded = base64_decode($base64Data);
 

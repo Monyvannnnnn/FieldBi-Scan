@@ -55,7 +55,7 @@ class StudioApp {
     });
 
     // OCR Modal Trigger
-    document.getElementById('btnRunOcr')?.addEventListener('click', () => this.runOCR());
+    document.getElementById('btnRunOcr')?.addEventListener('click', () => this.runOCR(true));
 
     // Export PDF
     document.getElementById('btnExportPdf')?.addEventListener('click', () => {
@@ -139,6 +139,21 @@ class StudioApp {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dataUrl: dataUrl, fileName: fileName })
     }).catch(() => {});
+
+    // Auto-run OCR after page is added (extract data without manual trigger)
+    setTimeout(() => {
+      if (this.activePageIndex === this.pages.length - 1) {
+        this.runOCR(false).then((success) => {
+          if (success) {
+            this.showToast('✅ Data extracted and updated in the form!');
+          } else {
+            this.showToast('❌ OCR extraction failed.');
+          }
+        }).catch(() => {
+          this.showToast('❌ OCR extraction failed.');
+        });
+      }
+    }, 400);
   }
 
   selectPage(index) {
@@ -264,19 +279,21 @@ class StudioApp {
     this.activePage.displayDataUrl = this.canvas.toDataURL('image/jpeg', 0.92);
   }
 
-  async runOCR() {
+  async runOCR(showModal = true) {
     if (!this.activePage) {
       alert('Please add or scan a page first');
-      return;
+      return false;
     }
 
-    const modal = new bootstrap.Modal(document.getElementById('ocrModal'));
-    modal.show();
+    if (showModal) {
+      const modal = new bootstrap.Modal(document.getElementById('ocrModal'));
+      modal.show();
+    }
 
     const progressEl = document.getElementById('ocrProgressBar');
     const statusEl = document.getElementById('ocrStatusText');
     progressEl.style.width = '10%';
-    statusEl.innerText = 'Loading Khmer + English OCR Web Worker...';
+    statusEl.innerText = 'Recognizing text...';
 
     try {
       const text = await this.ocr.runTesseractOCR(this.activePage.displayDataUrl, (pct) => {
@@ -295,8 +312,18 @@ class StudioApp {
       document.getElementById('formGrandTotal').value = parsedInvoice.grandTotal;
 
       statusEl.innerText = 'OCR extraction complete! Ready to save to PHP database.';
+      return true;
     } catch (err) {
       statusEl.innerText = 'OCR Failed: ' + err.message;
+      return false;
+    }
+  }
+
+  selectPage(index) {
+    if (index >= 0 && index < this.pages.length) {
+      this.activePageIndex = index;
+      this.renderThumbnails();
+      this.renderActivePage();
     }
   }
 

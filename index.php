@@ -55,6 +55,7 @@ if (file_exists($envFile)) {
       apiBase: "./api/",
       endpoints: {
         upload: "./api/upload.php",
+        extract: "./api/extract.php",
         invoices: "./api/invoices.php",
         recent: "./api/recent.php"
       },
@@ -71,6 +72,13 @@ if (file_exists($envFile)) {
   <link rel="modulepreload" href="dist/chunk-CfZDj8X5.js">
   <link rel="modulepreload" href="dist/chunk-BDsr83Wc.js">
   <link rel="modulepreload" href="dist/chunk-CABSGZFi.js">
+  <script src="js/pdf.min.js?v=<?php echo filemtime(dirname(__FILE__) . '/js/pdf.min.js'); ?>"></script>
+  <script>
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "js/pdf.worker.min.js";
+    }
+  </script>
+  <script src="js/ocr-invoice.js"></script>
   <script src="dist/main-WK3YL7MT.js?v=<?php echo filemtime(dirname(__FILE__) . '/dist/chunk-gROQH1QD.js'); ?>" type="module"></script>
   <script src="js/standard-invoice-form.js?v=<?php echo filemtime(dirname(__FILE__) . '/js/standard-invoice-form.js'); ?>" defer></script>
 </body>

@@ -120,7 +120,8 @@
   display: none !important;
 }
 </style>
-<link rel="stylesheet" href="dist/styles-USYXGXB7.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="dist/styles-USYXGXB7.css"></noscript></head>
+<link rel="stylesheet" href="dist/styles-USYXGXB7.css" media="print" onload="this.media='all'"><noscript><link rel="stylesheet" href="dist/styles-USYXGXB7.css"></noscript>  <link rel="stylesheet" href="css/invoice-form.css?v=1793092000">
+</head>
 
   <body>
     <script>
@@ -135,7 +136,14 @@
       };
     </script>
     <app-root></app-root>
-  <link rel="modulepreload" href="dist/chunk-C86zhvaO.js"><link rel="modulepreload" href="dist/chunk-D9AI81tR.js"><link rel="modulepreload" href="dist/chunk-CfZDj8X5.js"><link rel="modulepreload" href="dist/chunk-BDsr83Wc.js"><link rel="modulepreload" href="dist/chunk-CABSGZFi.js"><script src="dist/main-WK3YL7MT.js" type="module"></script>
-  <script src="js/standard-invoice-form.js" defer></script>
+  <script src="js/pdf.min.js"></script>
+  <script>
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "js/pdf.worker.min.js";
+    }
+  </script>
+  <script src="js/ocr-invoice.js"></script>
+  <script src="dist/main-WK3YL7MT.js?v=1793094000" type="module"></script>
+  <script src="js/standard-invoice-form.js?v=1793094000" defer></script>
 </body>
 </html>
